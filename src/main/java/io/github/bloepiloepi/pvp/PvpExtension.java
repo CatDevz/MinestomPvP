@@ -140,10 +140,12 @@ public class PvpExtension extends Extension {
 	}
 	
 	@Override
-	public void initialize() {
+	public LoadStatus initialize() {
 		init();
 		
 		getEventNode().addChild(events());
+
+		return LoadStatus.SUCCESS;
 	}
 	
 	@Override
