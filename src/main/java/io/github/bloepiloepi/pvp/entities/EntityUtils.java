@@ -5,6 +5,7 @@ import io.github.bloepiloepi.pvp.enchantment.EnchantmentUtils;
 import io.github.bloepiloepi.pvp.enchantment.enchantments.ProtectionEnchantment;
 import io.github.bloepiloepi.pvp.enums.Tool;
 import io.github.bloepiloepi.pvp.food.HungerManager;
+import io.github.bloepiloepi.pvp.listeners.DamageListener;
 import io.github.bloepiloepi.pvp.potion.PotionListener;
 import io.github.bloepiloepi.pvp.projectile.Arrow;
 import it.unimi.dsi.fastutil.Pair;
@@ -68,9 +69,7 @@ public class EntityUtils {
 		
 		// Do not start fire event if the fire needs to be removed (< 0 duration)
 		if (duration.toMillis() > 0) {
-			EventDispatcher.callCancellable(entityFireEvent, () -> {
-				entity.setOnFire(true);
-			});
+			EventDispatcher.callCancellable(entityFireEvent, () -> entity.setOnFire(true));
 		}
 		// Tracker.fireExtinguishTime is updated by event listener
 	}
@@ -131,7 +130,7 @@ public class EntityUtils {
 		LivingEntityMeta meta = (LivingEntityMeta) entity.getEntityMeta();
 		
 		if (meta.isHandActive()) {
-			return entity.getItemInHand(meta.getActiveHand()).getMaterial() == Material.SHIELD;
+			return entity.getItemInHand(meta.getActiveHand()).material() == Material.SHIELD;
 		}
 		
 		return false;
@@ -141,7 +140,7 @@ public class EntityUtils {
 		LivingEntityMeta meta = (LivingEntityMeta) entity.getEntityMeta();
 		
 		if (meta.isHandActive()) {
-			return entity.getItemInHand(meta.getActiveHand()).getMaterial() == Material.CROSSBOW;
+			return entity.getItemInHand(meta.getActiveHand()).material() == Material.CROSSBOW;
 		}
 		
 		return false;
@@ -160,7 +159,7 @@ public class EntityUtils {
 		
 		if (!(entity instanceof Player)) return;
 		
-		Tool tool = Tool.fromMaterial(attacker.getItemInMainHand().getMaterial());
+		Tool tool = Tool.fromMaterial(attacker.getItemInMainHand().material());
 		if (tool != null && tool.isAxe()) {
 			disableShield((Player) entity, true); //For some reason the vanilla server always passes true
 		}

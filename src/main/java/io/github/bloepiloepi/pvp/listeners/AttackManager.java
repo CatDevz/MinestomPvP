@@ -1,5 +1,6 @@
 package io.github.bloepiloepi.pvp.listeners;
 
+import io.github.bloepiloepi.pvp.entities.CustomPlayer;
 import io.github.bloepiloepi.pvp.enums.Tool;
 import io.github.bloepiloepi.pvp.events.FinalAttackEvent;
 import io.github.bloepiloepi.pvp.legacy.LegacyKnockbackSettings;
@@ -150,7 +151,7 @@ public class AttackManager {
 				Pos previousPosition = (Pos) field.get(player);
 				double lastMoveDistance = previousPosition.distance(player.getPosition()) * 0.6;
 				if (lastMoveDistance < player.getAttributeValue(Attribute.MOVEMENT_SPEED)) {
-					Tool tool = Tool.fromMaterial(player.getItemInMainHand().getMaterial());
+					Tool tool = Tool.fromMaterial(player.getItemInMainHand().material());
 					if (tool != null && tool.isSword()) {
 						sweeping = true;
 					}
@@ -160,7 +161,7 @@ public class AttackManager {
 			}
 		}
 		
-		FinalAttackEvent finalAttackEvent = new FinalAttackEvent(player, target, sprintAttack, critical, sweeping, damage, enchantedDamage, !legacy);
+		FinalAttackEvent finalAttackEvent = new FinalAttackEvent(player, target, sprintAttack, critical, sweeping, damage, enchantedDamage, !legacy, true);
 		EventDispatcher.call(finalAttackEvent);
 		
 		if (finalAttackEvent.isCancelled()) {
@@ -172,11 +173,6 @@ public class AttackManager {
 		sweeping = finalAttackEvent.isSweeping();
 		damage = finalAttackEvent.getBaseDamage();
 		enchantedDamage = finalAttackEvent.getEnchantsExtraDamage();
-		
-		if (sprintAttack) {
-			if (finalAttackEvent.hasAttackSounds()) SoundManager.sendToAround(player, SoundEvent.ENTITY_PLAYER_ATTACK_KNOCKBACK, Sound.Source.PLAYER, 1.0F, 1.0F);
-			knockback++;
-		}
 		
 		if (critical) {
 			if (legacy) {
@@ -193,10 +189,26 @@ public class AttackManager {
 			originalHealth = ((LivingEntity) target).getHealth();
 		}
 		
+		if (legacy && player instanceof CustomPlayer custom) {
+			custom.afterSprintAttack();
+		}
+		
 		boolean damageSucceeded = EntityUtils.damage(target, CustomDamageType.player(player), damage);
 		
+		if (sprintAttack) {
+			if (finalAttackEvent.hasAttackSounds()) {
+				if (damageSucceeded || finalAttackEvent.playSoundsOnFail()) {
+					SoundManager.sendToAround(player, SoundEvent.ENTITY_PLAYER_ATTACK_KNOCKBACK, Sound.Source.PLAYER, 1.0F, 1.0F);
+				}
+			}
+			
+			knockback++;
+		}
+		
 		if (!damageSucceeded) {
-			if (finalAttackEvent.hasAttackSounds()) SoundManager.sendToAround(player, SoundEvent.ENTITY_PLAYER_ATTACK_NODAMAGE, Sound.Source.PLAYER, 1.0F, 1.0F);
+			if (finalAttackEvent.hasAttackSounds() && finalAttackEvent.playSoundsOnFail()) {
+				SoundManager.sendToAround(player, SoundEvent.ENTITY_PLAYER_ATTACK_NODAMAGE, Sound.Source.PLAYER, 1.0F, 1.0F);
+			}
 			return;
 		}
 		
@@ -205,8 +217,8 @@ public class AttackManager {
 				EntityKnockbackEvent entityKnockbackEvent = new EntityKnockbackEvent(target, player, true, false, knockback * 0.5F);
 				EventDispatcher.callCancellable(entityKnockbackEvent, () -> {
 					float strength = entityKnockbackEvent.getStrength();
-					if (target instanceof LivingEntity) {
-						target.takeKnockback(strength, Math.sin(Math.toRadians(player.getPosition().yaw())), -Math.cos(Math.toRadians(player.getPosition().yaw())));
+					if (target instanceof LivingEntity living) {
+						living.takeKnockback(strength, Math.sin(Math.toRadians(player.getPosition().yaw())), -Math.cos(Math.toRadians(player.getPosition().yaw())));
 					} else {
 						target.setVelocity(target.getVelocity().add(-Math.sin(Math.toRadians(player.getPosition().yaw())) * strength, 0.1D, Math.cos(Math.toRadians(player.getPosition().yaw())) * strength));
 					}
@@ -224,19 +236,15 @@ public class AttackManager {
 				EventDispatcher.callCancellable(legacyKnockbackEvent, () -> {
 					LegacyKnockbackSettings settings = legacyKnockbackEvent.getSettings();
 					target.setVelocity(target.getVelocity().add(
-							-Math.sin(player.getPosition().yaw() * Math.PI / 180.0F) * finalKnockback * settings.getExtraHorizontal(),
-							settings.getExtraVertical(),
-							Math.cos(player.getPosition().yaw() * Math.PI / 180.0F) * finalKnockback * settings.getExtraHorizontal()
+							-Math.sin(player.getPosition().yaw() * Math.PI / 180.0F) * finalKnockback * settings.extraHorizontal(),
+							settings.extraVertical(),
+							Math.cos(player.getPosition().yaw() * Math.PI / 180.0F) * finalKnockback * settings.extraHorizontal()
 					));
 				});
 			}
 			
-			try {
-				Field field = Entity.class.getDeclaredField("velocity");
-				field.setAccessible(true);
-				field.set(player, player.getVelocity().mul(0.6D, 1.0D, 0.6D));
-			} catch (NoSuchFieldException | IllegalAccessException e) {
-				e.printStackTrace();
+			if (!legacy && player instanceof CustomPlayer custom) {
+				custom.afterSprintAttack();
 			}
 			
 			player.setSprinting(false);
@@ -252,7 +260,6 @@ public class AttackManager {
 						if (entity == target) return;
 						if (entity == player) return;
 						if (entity.getEntityMeta() instanceof ArmorStandMeta) return;
-						if (entity.getTeam() == player.getTeam()) return;
 						
 						if (player.getPosition().distanceSquared(entity.getPosition()) < 9.0) {
 							EntityKnockbackEvent entityKnockbackEvent = new EntityKnockbackEvent(entity, player, false, true, 0.4F);
@@ -288,7 +295,6 @@ public class AttackManager {
 			if (strongAttack) {
 				if (finalAttackEvent.hasAttackSounds()) SoundManager.sendToAround(player, SoundEvent.ENTITY_PLAYER_ATTACK_STRONG, Sound.Source.PLAYER, 1.0F, 1.0F);
 			} else {
-				//noinspection ConstantConditions
 				if (finalAttackEvent.hasAttackSounds()) SoundManager.sendToAround(player, SoundEvent.ENTITY_PLAYER_ATTACK_WEAK, Sound.Source.PLAYER, 1.0F, 1.0F);
 			}
 		}
@@ -304,7 +310,7 @@ public class AttackManager {
 		EnchantmentUtils.onTargetDamaged(player, target);
 		//TODO target and user damaged should also work when non-player mob attacks (mobs, arrows, trident)
 		
-		Tool tool = Tool.fromMaterial(player.getItemInMainHand().getMaterial());
+		Tool tool = Tool.fromMaterial(player.getItemInMainHand().material());
 		if (tool != null) {
 			ItemUtils.damageEquipment(player, EquipmentSlot.MAIN_HAND, (tool.isSword() || tool == Tool.TRIDENT) ? 1 : 2);
 		}
