@@ -5,8 +5,10 @@ import io.github.bloepiloepi.pvp.damage.CustomDamageType;
 import io.github.bloepiloepi.pvp.events.EntityKnockbackEvent;
 import io.github.bloepiloepi.pvp.events.LegacyKnockbackEvent;
 import io.github.bloepiloepi.pvp.legacy.LegacyKnockbackSettings;
+import io.github.bloepiloepi.pvp.listeners.DamageListener;
 import io.github.bloepiloepi.pvp.potion.effect.CustomPotionEffect;
 import io.github.bloepiloepi.pvp.test.commands.Commands;
+import net.kyori.adventure.text.Component;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.attribute.Attribute;
 import net.minestom.server.coordinate.Pos;
@@ -15,7 +17,6 @@ import net.minestom.server.event.EventDispatcher;
 import net.minestom.server.event.GlobalEventHandler;
 import net.minestom.server.event.player.*;
 import net.minestom.server.extras.lan.OpenToLAN;
-import net.minestom.server.extras.velocity.VelocityProxy;
 import net.minestom.server.instance.Instance;
 import net.minestom.server.potion.Potion;
 import net.minestom.server.potion.PotionEffect;
@@ -53,21 +54,21 @@ public class PvpTest {
 					if (!player.get().damage(CustomDamageType.mob(entity), 1.0F))
 						return;
 					
-//					LegacyKnockbackEvent legacyKnockbackEvent = new LegacyKnockbackEvent(player.get(), entity, true);
-//					EventDispatcher.callCancellable(legacyKnockbackEvent, () -> {
-//						LegacyKnockbackSettings settings = legacyKnockbackEvent.getSettings();
-//
-//						player.get().setVelocity(player.get().getVelocity().add(
-//								-Math.sin(entity.getPosition().yaw() * 3.1415927F / 180.0F) * 1 * settings.getExtraHorizontal(),
-//								settings.getExtraVertical(),
-//								Math.cos(entity.getPosition().yaw() * 3.1415927F / 180.0F) * 1 * settings.getExtraHorizontal()
-//						));
-//					});
-					EntityKnockbackEvent entityKnockbackEvent = new EntityKnockbackEvent(player.get(), entity, true, false, 1 * 0.5F);
-					EventDispatcher.callCancellable(entityKnockbackEvent, () -> {
-						float strength = entityKnockbackEvent.getStrength();
-						player.get().takeKnockback(strength, Math.sin(Math.toRadians(entity.getPosition().yaw())), -Math.cos(Math.toRadians(entity.getPosition().yaw())));
+					LegacyKnockbackEvent legacyKnockbackEvent = new LegacyKnockbackEvent(player.get(), entity, true);
+					EventDispatcher.callCancellable(legacyKnockbackEvent, () -> {
+						LegacyKnockbackSettings settings = legacyKnockbackEvent.getSettings();
+
+						player.get().setVelocity(player.get().getVelocity().add(
+								-Math.sin(entity.getPosition().yaw() * 3.1415927F / 180.0F) * 1 * settings.extraHorizontal(),
+								settings.extraVertical(),
+								Math.cos(entity.getPosition().yaw() * 3.1415927F / 180.0F) * 1 * settings.extraHorizontal()
+						));
 					});
+//					EntityKnockbackEvent entityKnockbackEvent = new EntityKnockbackEvent(player.get(), entity, true, false, 1 * 0.5F);
+//					EventDispatcher.callCancellable(entityKnockbackEvent, () -> {
+//						float strength = entityKnockbackEvent.getStrength();
+//						player.get().takeKnockback(strength, Math.sin(Math.toRadians(entity.getPosition().yaw())), -Math.cos(Math.toRadians(entity.getPosition().yaw())));
+//					});
 				}
 				
 				event.getPlayer().setFood(20);
@@ -82,23 +83,22 @@ public class PvpTest {
 			event.getPlayer().addEffect(new Potion(PotionEffect.REGENERATION, (byte) 10, CustomPotionEffect.PERMANENT));
 		});
 		
-		MinecraftServer.getGlobalEventHandler().addListener(PlayerStartFlyingEvent.class,
-				event -> event.getPlayer().setNoGravity(true));
-		MinecraftServer.getGlobalEventHandler().addListener(PlayerStopFlyingEvent.class,
-				event -> event.getPlayer().setNoGravity(false));
-		
-		LegacyKnockbackSettings settings = LegacyKnockbackSettings.builder()
-				.horizontal(0.4)
-				.vertical(0.4)
-				.verticalLimit(0.4)
-				.extraHorizontal(0.48)
-				.extraVertical(0.1)
-				.build();
-		MinecraftServer.getGlobalEventHandler().addListener(LegacyKnockbackEvent.class,
-				event -> event.setSettings(settings));
+//		LegacyKnockbackSettings settings = LegacyKnockbackSettings.builder()
+//				.horizontal(0.35)
+//				.vertical(0.4)
+//				.verticalLimit(0.4)
+//				.extraHorizontal(0.45)
+//				.extraVertical(0.1)
+//				.build();
+//		MinecraftServer.getGlobalEventHandler().addListener(LegacyKnockbackEvent.class,
+//				event -> event.setSettings(settings));
 		
 		GlobalEventHandler eventHandler = MinecraftServer.getGlobalEventHandler();
 		eventHandler.addChild(PvpExtension.legacyEvents());
+		
+		eventHandler.addListener(PlayerTickEvent.class, event -> {
+			event.getPlayer().sendActionBar(Component.text(event.getPlayer().getVelocity().toString()));
+		});
 		
 		Commands.init();
 		

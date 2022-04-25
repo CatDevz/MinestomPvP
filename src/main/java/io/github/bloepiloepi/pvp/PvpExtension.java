@@ -1,6 +1,7 @@
 package io.github.bloepiloepi.pvp;
 
 import io.github.bloepiloepi.pvp.enchantment.CustomEnchantments;
+import io.github.bloepiloepi.pvp.entities.CustomPlayer;
 import io.github.bloepiloepi.pvp.entities.Tracker;
 import io.github.bloepiloepi.pvp.food.FoodListener;
 import io.github.bloepiloepi.pvp.legacy.SwordBlockHandler;
@@ -67,7 +68,7 @@ public class PvpExtension extends Extension {
 	
 	/**
 	 * Creates an EventNode with damage events.
-	 * This includes armor, shields and damage invulnerability.
+	 * This includes armor, shields, damage invulnerability, and fall damage.
 	 * (This only reduces damage based on armor attribute,
 	 * to change that attribute for different types of armor you need #armorToolEvents().
 	 *
@@ -161,6 +162,7 @@ public class PvpExtension extends Extension {
 		CustomPotionTypes.registerAll();
 		
 		Tracker.register(MinecraftServer.getGlobalEventHandler());
+		MinecraftServer.getConnectionManager().setPlayerProvider(CustomPlayer::new);
 		
 		try {
 			Field isFood = Registry.MaterialEntry.class.getDeclaredField("isFood");
